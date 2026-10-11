@@ -1,8 +1,8 @@
 # Theming & Modding
 
 How to edit and select themes, use shared design tokens, and supply custom assets. The client
-ships `legacy` and `modern`, plus `legacy-inherited-test` for checking inheritance without visual
-overrides. Additional theme folders work without recompilation and can inherit an existing theme.
+ships `legacy`, `modern` and `classic` (the 0.97 interface, below), plus `legacy-inherited-test`
+for checking inheritance without visual overrides. Additional theme folders work without recompilation and can inherit an existing theme.
 A separate user/mod override layer is not implemented.
 
 ## Shared markup and theme-specific structure
@@ -329,6 +329,35 @@ Fonts load before themed documents at startup and on theme selection. RmlUi reta
 families for the session, so a family loaded by an earlier theme remains available. Reselecting
 a theme retries optional files; restart the client to replace a font file whose family is
 already loaded. Referencing a player's installed font does not package it with the theme.
+
+## The classic (0.97) theme
+
+`RmlTheme=classic` gives the interface of the original 0.97 client, drawn with its own art. It
+inherits `legacy` and restyles the login box, server list, character select and creation, HUD,
+inventory, character, party, NPC shop, storage, trade, Chaos Machine, guild, event entries,
+message boxes and chat. The art lives outside the RmlUi tree, in `Data/Interface/Classic` and
+`Data/Logo/Classic`, so its file names cannot collide with S6 files of the same name.
+
+What changes for the player, besides the look:
+
+- **Chat:** one list, either six frameless lines at the top-left corner or a framed window above
+  the input box. F4 cycles frameless, 3, 6 and 15 lines; F2 hides normal chat while whispers,
+  party, guild and system messages stay. Three buttons (chat on/off, size, transparency) appear
+  above the bar while the pointer is over its middle.
+- **World:** no marker where the hero is sent to walk, and no map title when entering a map.
+
+The behaviour above is C++ that a theme turns on in `theme.ini`'s `[Capabilities]`, so another
+theme can reuse any of it:
+
+| Capability | Effect |
+|---|---|
+| `ClassicChat=1` | The 0.97 chat keys and buttons (the theme styles `.classic-chat-framed` / `.classic-chat-silenced`) |
+| `NoMoveTargetMarker=1` | No marker under a move click |
+
+The HUD model also exposes what the 0.97 bar shows and the S6 bar does not: `party_open` /
+`guild_open` with `mainframe_party_click` / `mainframe_guild_click` and their tooltips,
+`coord_x` / `coord_y`, and `left_covered` / `right_covered` (a docked window covers that side
+of the world).
 
 ## Coordinates, scaling, and positioning — what a theme actually controls
 

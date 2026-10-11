@@ -12,6 +12,7 @@
 #include <RmlUi/Core/ElementDocument.h>
 
 #include <string>
+#include <string_view>
 
 namespace UI::Chat::ClassicChat
 {
@@ -23,6 +24,19 @@ constexpr int MediumLines = 6;
 constexpr int BigLines = 15;
 // 0.97's frameless list.
 constexpr int FramelessLines = 6;
+
+// 0.97's frame is 640x480 and its bar (#hud_layout) the bottom 48 units of it.
+constexpr float OriginalWidth = 640.f;
+constexpr float BarTop = 432.f;
+constexpr float BarHeight = 48.f;
+// 0040e230: the buttons fade in over the bar's middle, from 4 units under its top, and fade out
+// once the pointer goes above them.
+constexpr float ButtonsHoverLeft = 160.f;
+constexpr float ButtonsHoverRight = 480.f;
+constexpr float ButtonsHoverTop = BarTop + 4.f;
+constexpr float ButtonsHideAbove = 416.f;
+// The chat input's depth: over the HUD (main_frame, 10.6), under the tooltips (10.69).
+constexpr float InputOverHudDepth = 10.65f;
 
 bool s_chatShown = true; // 0.97's DAT_00559bf1: normal chat shown
 bool s_buttonsShown = false;
@@ -36,24 +50,31 @@ mu::ui::window::CChatLogWindow* ChatLog()
     return g_pChatListBox;
 }
 
-Rml::ElementDocument* FindDocument(const char* file)
+// True when `url`'s file name is `file` (".../file"). Runs every frame, so it compares in place.
+bool IsDocumentFile(const std::string& url, std::string_view file)
+{
+    if (url.size() <= file.size())
+        return false;
+    const std::size_t start = url.size() - file.size();
+    return url[start - 1] == '/' && std::string_view(url).substr(start) == file;
+}
+
+Rml::ElementDocument* FindDocument(std::string_view file)
 {
     Rml::Context* context = RmlUiRuntime::Instance().GetContext();
     if (context == nullptr)
         return nullptr;
-    const std::string suffix = std::string("/") + file;
     for (int i = 0; i < context->GetNumDocuments(); ++i)
     {
         Rml::ElementDocument* document = context->GetDocument(i);
-        const std::string& url = document->GetSourceURL();
-        if (url.size() >= suffix.size() && url.compare(url.size() - suffix.size(), suffix.size(), suffix) == 0)
+        if (IsDocumentFile(document->GetSourceURL(), file))
             return document;
     }
     return nullptr;
 }
 
 // Sets `className` on the first element matching `selector` in `file`; false when it is not there.
-bool SetClass(const char* file, const char* selector, const char* className, bool on)
+bool SetClass(std::string_view file, const char* selector, const char* className, bool on)
 {
     Rml::ElementDocument* document = FindDocument(file);
     if (document == nullptr)
@@ -158,7 +179,6 @@ void Sync()
     // the HUD and under the tooltips (10.69). A theme reload restores the default, hence every frame.
     if (Rml::ElementDocument* input = active ? FindDocument("chat_input.rml") : nullptr)
     {
-        constexpr float InputOverHudDepth = 10.65f;
         const Rml::Property* zIndex = input->GetLocalProperty(Rml::PropertyId::ZIndex);
         if (zIndex == nullptr || zIndex->Get<float>() != InputOverHudDepth)
             input->SetProperty(Rml::PropertyId::ZIndex, Rml::Property(InputOverHudDepth, Rml::Unit::NUMBER));
@@ -179,11 +199,11 @@ void Sync()
     if (!bar->Project(point))
         return;
     const Rml::Vector2f offset = bar->GetAbsoluteOffset(Rml::BoxArea::Border);
-    const float x = (point.x - offset.x) * 640.f / size.x;
-    const float y = 432.f + (point.y - offset.y) * 48.f / size.y;
-    if (x >= 160.f && x < 480.f && y >= 436.f)
+    const float x = (point.x - offset.x) * OriginalWidth / size.x;
+    const float y = BarTop + (point.y - offset.y) * BarHeight / size.y;
+    if (x >= ButtonsHoverLeft && x < ButtonsHoverRight && y >= ButtonsHoverTop)
         s_buttonsShown = true;
-    else if (y < 416.f)
+    else if (y < ButtonsHideAbove)
         s_buttonsShown = false;
 }
 

@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <map>
 #include <string>
+#include <string_view>
 
 namespace UI::RmlBridge
 {
@@ -15,9 +16,10 @@ namespace
 {
 constexpr const char* ThemesRoot = "Data/Interface/RmlUi/themes";
 
-// Answers per key for the theme they were read under; some callers ask every frame.
+// Answers per key for the theme they were read under; some callers ask every frame, so a cached
+// key is found without building a string (std::less<> compares the view in place).
 std::string s_cachedTheme;
-std::map<std::wstring, bool> s_cache;
+std::map<std::wstring, bool, std::less<>> s_cache;
 
 bool ReadCapability(const wchar_t* key)
 {
@@ -35,7 +37,7 @@ bool HasThemeCapability(const wchar_t* key)
         s_cachedTheme = theme;
         s_cache.clear();
     }
-    const auto found = s_cache.find(key);
+    const auto found = s_cache.find(std::wstring_view(key));
     if (found != s_cache.end())
         return found->second;
     const bool value = ReadCapability(key);
