@@ -29,6 +29,7 @@
 #include "UI/RmlBridge/RmlDocumentVisibility.h"
 #include "Core/Utilities/StringUtils.h"
 #include "Core/Input/ImeInput.h"
+#include "UI/Chat/ClassicChat.h"
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
@@ -195,6 +196,8 @@ bool mu::ui::window::CChatInputBox::UpdateMouseEvent()
 
 bool mu::ui::window::CChatInputBox::UpdateKeyEvent()
 {
+    if (UI::Chat::ClassicChat::UpdateKeys(m_pNewUIChatLogWnd)) return false; // 0.97 F2 / F4 in the classic theme
+
     if (mu::ui::window::IsPress(VK_F2))
     {
         m_bShowMessageElseNormal = !m_bShowMessageElseNormal;

@@ -41,6 +41,7 @@
 #include "GameLogic/Pets/GIPetManager.h"
 #include "Character/CSParts.h"
 #include "UI/HUD/UIMapName.h"	// rozy
+#include "UI/RmlBridge/ThemeCapability.h"
 #include "GameLogic/Events/Cinematic/CDirection.h"
 #include "World/MapInfra/MapManager.h"
 #include "GameLogic/Events/Event.h"
@@ -3388,7 +3389,7 @@ void MoveHero()
                             DeleteEffect(MODEL_MOVE_TARGETPOSITION_EFFECT);
 
                             int iTerrainIndex = TERRAIN_INDEX((int)SelectXF, (int)SelectYF);
-                            if ((TerrainWall[iTerrainIndex] & TW_NOMOVE) != TW_NOMOVE)
+                            if ((TerrainWall[iTerrainIndex] & TW_NOMOVE) != TW_NOMOVE && !UI::RmlBridge::HasThemeCapability(L"NoMoveTargetMarker")) // 0.97 has no click marker
                             {
                                 CreateEffect(MODEL_MOVE_TARGETPOSITION_EFFECT, vPos, pHeroObj->Angle, vLight, 0, pHeroObj, -1, 0, 0, 0, 0.6f);
                             }
