@@ -1,5 +1,7 @@
 #pragma once
 
+#include "UI/Chat/MessageType.h"
+
 namespace mu::ui::window
 {
 class CChatLogWindow;
@@ -19,19 +21,27 @@ namespace UI::Chat::ClassicChat
 // True while the active theme declares ClassicChat=1.
 bool IsActive();
 
+// What the chat log lists while F2 hides the normal chat (CChatInputBox owns that state, in every
+// theme): S6 lists only the whispers; with ClassicChat it keeps listing every message and the
+// theme hides the normal lines (the classic-chat-silenced class).
+constexpr mu::ui::window::MESSAGE_TYPE ListedMessages(bool normalChatHidden, bool classicChat)
+{
+    return normalChatHidden && !classicChat ? mu::ui::window::TYPE_WHISPER_MESSAGE : mu::ui::window::TYPE_ALL_MESSAGE;
+}
+
 // From the top of CChatInputBox::UpdateKeyEvent (which runs whether or not the box is open):
-// handles F2 / F4 the 0.97 way. True when it used the key, so the S6 handling is skipped.
+// handles F4 the 0.97 way. True when it used the key, so the S6 handling is skipped.
 bool UpdateKeys(mu::ui::window::CChatLogWindow* chatLog);
 
-// The buttons above the bar.
+// The buttons above the bar. The first one is F2's.
 void ToggleChat();
 void StepSize();
 void StepTransparency();
 
 bool IsChatShown();
 
-// Once a frame (from ClassicHud::SyncModel): the frame / silence classes on the workspace and the
-// chat log, and whether the mouse is where 0.97 shows the buttons.
+// Once a frame (from UI::Hud::MainFrameExtras::SyncModel): the frame / silence classes on the
+// workspace and the chat log, and whether the mouse is where the theme shows the buttons.
 void Sync();
 bool ButtonsShown();
 } // namespace UI::Chat::ClassicChat

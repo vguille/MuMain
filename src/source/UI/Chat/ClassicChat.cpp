@@ -4,6 +4,7 @@
 #include "Audio/DSPlaySound.h"
 #include "Render/RmlUi/RmlUiRuntime.h"
 #include "UI/Core/WindowSystem.h"
+#include "UI/HUD/ChatInputBox.h"
 #include "UI/HUD/ChatLogWindow.h"
 #include "UI/Placement/WindowPlacement.h"
 #include "UI/RmlBridge/ThemeCapability.h"
@@ -11,6 +12,7 @@
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
 
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -25,23 +27,15 @@ constexpr int BigLines = 15;
 // 0.97's frameless list.
 constexpr int FramelessLines = 6;
 
-// 0.97's frame is 640x480 and its bar (#hud_layout) the bottom 48 units of it.
-constexpr float OriginalWidth = 640.f;
-constexpr float BarTop = 432.f;
-constexpr float BarHeight = 48.f;
-// 0040e230: the buttons fade in over the bar's middle, from 4 units under its top, and fade out
-// once the pointer goes above them.
-constexpr float ButtonsHoverLeft = 160.f;
-constexpr float ButtonsHoverRight = 480.f;
-constexpr float ButtonsHoverTop = BarTop + 4.f;
-constexpr float ButtonsHideAbove = 416.f;
-// The chat input's depth: over the HUD (main_frame, 10.6), under the tooltips (10.69).
-constexpr float InputOverHudDepth = 10.65f;
+// The state the theme styles: on the workspace's and the chat log's <body>, so a reloaded document
+// gets it back on the next frame. Rml::String, so the per-frame checks build no string.
+const Rml::String FramedClass = "classic-chat-framed";
+const Rml::String SilencedClass = "classic-chat-silenced";
+// The chat's buttons and the area that shows them, in main_frame.rml.
+const Rml::String ButtonsId = "chat_btns";
+const Rml::String ButtonsZoneId = "chat_btns_zone";
 
-bool s_chatShown = true; // 0.97's DAT_00559bf1: normal chat shown
 bool s_buttonsShown = false;
-bool s_framedApplied = false;
-bool s_silencedApplied = false;
 // Frames until the log is scrolled to its newest line, once a resize has been laid out.
 int s_scrollFrames = 0;
 
@@ -73,19 +67,57 @@ Rml::ElementDocument* FindDocument(std::string_view file)
     return nullptr;
 }
 
-// Sets `className` on the first element matching `selector` in `file`; false when it is not there.
-bool SetClass(std::string_view file, const char* selector, const char* className, bool on)
+// Sets or clears `className` on `file`'s <body> when it differs. True when it changed.
+bool SyncDocumentClass(std::string_view file, const Rml::String& className, bool on)
 {
     Rml::ElementDocument* document = FindDocument(file);
-    if (document == nullptr)
+    if (document == nullptr || document->IsClassSet(className) == on)
         return false;
-    Rml::Element* element = document->QuerySelector(selector);
-    if (element == nullptr)
-        return false;
-    element->SetClass(className, on);
+    document->SetClass(className, on);
     return true;
 }
 
+// The pointer relative to `element`'s border box, in the element's layout units (Project() undoes
+// the HUD's scale); none when it cannot be projected.
+std::optional<Rml::Vector2f> PointerOver(Rml::Element* element)
+{
+    Rml::Vector2f point(g_fWindowMouseX, g_fWindowMouseY);
+    if (!element->Project(point))
+        return std::nullopt;
+    return point - element->GetAbsoluteOffset(Rml::BoxArea::Border);
+}
+
+bool IsPointerInside(Rml::Element* element)
+{
+    const std::optional<Rml::Vector2f> point = PointerOver(element);
+    const Rml::Vector2f size = element->GetBox().GetSize(Rml::BoxArea::Border);
+    return point && point->x >= 0.f && point->y >= 0.f && point->x < size.x && point->y < size.y;
+}
+
+bool IsPointerAbove(Rml::Element* element)
+{
+    const std::optional<Rml::Vector2f> point = PointerOver(element);
+    return point && point->y < 0.f;
+}
+
+// 0.97's 0040e230: the buttons show once the pointer is over #chat_btns_zone (0.97: the bar's
+// middle) and hide once it goes above #chat_btns, wherever it is sideways. The theme places both;
+// without a zone, the buttons' own box shows them.
+void SyncButtons()
+{
+    Rml::ElementDocument* hud = FindDocument("main_frame.rml");
+    Rml::Element* buttons = hud != nullptr ? hud->GetElementById(ButtonsId) : nullptr;
+    if (buttons == nullptr)
+    {
+        s_buttonsShown = false;
+        return;
+    }
+    Rml::Element* zone = hud->GetElementById(ButtonsZoneId);
+    if (IsPointerInside(zone != nullptr ? zone : buttons))
+        s_buttonsShown = true;
+    else if (IsPointerAbove(buttons))
+        s_buttonsShown = false;
+}
 } // namespace
 
 bool IsActive()
@@ -95,8 +127,8 @@ bool IsActive()
 
 void ToggleChat()
 {
-    s_chatShown = !s_chatShown;
-    PlayBuffer(SOUND_CLICK01);
+    if (mu::ui::window::CChatInputBox* input = g_pChatInputBox)
+        input->ToggleNormalChat();
 }
 
 // 0.97's 0040e330: frameless (6) -> framed 3 -> 6 -> big -> frameless.
@@ -134,18 +166,14 @@ void StepTransparency()
 
 bool IsChatShown()
 {
-    return s_chatShown;
+    const mu::ui::window::CChatInputBox* input = g_pChatInputBox;
+    return input == nullptr || input->IsNormalChatShown();
 }
 
 bool UpdateKeys(mu::ui::window::CChatLogWindow* chatLog)
 {
     if (!IsActive() || chatLog == nullptr)
         return false;
-    if (mu::ui::window::IsPress(VK_F2))
-    {
-        ToggleChat();
-        return true;
-    }
     if (mu::ui::window::IsPress(VK_F4))
     {
         StepSize();
@@ -156,55 +184,24 @@ bool UpdateKeys(mu::ui::window::CChatLogWindow* chatLog)
 
 void Sync()
 {
-    const bool active = IsActive();
+    // A theme switch rebuilds every document, so the classes go with the theme that set them.
+    if (!IsActive())
+    {
+        s_buttonsShown = false;
+        return;
+    }
     mu::ui::window::CChatLogWindow* chatLog = ChatLog();
 
     // The framed window stands above the input box (workspace.rcss); the frameless list stays in
     // the corner. Re-place on a change.
-    const bool framed = active && chatLog != nullptr && chatLog->IsShowFrame();
-    if (framed != s_framedApplied && SetClass("workspace.rml", ".chat-stack", "classic-chat-framed", framed))
-    {
-        s_framedApplied = framed;
+    const bool framed = chatLog != nullptr && chatLog->IsShowFrame();
+    if (SyncDocumentClass("workspace.rml", FramedClass, framed))
         UI::Placement::Invalidate();
-    }
     if (s_scrollFrames > 0 && --s_scrollFrames == 0 && chatLog != nullptr)
         chatLog->Scrolling(static_cast<int>(chatLog->GetNumberOfLines(chatLog->GetCurrentMsgType())));
 
-    const bool silenced = active && !s_chatShown;
-    if (silenced != s_silencedApplied && SetClass("chat_log.rml", "#panel", "classic-chat-silenced", silenced))
-        s_silencedApplied = silenced;
-
-    // 0.97 draws the input box over the bar (y 415-444, its foot on the bar's top); MuMain stacks
-    // the HUD (main_frame, 10.6) over it (RmlStackingOrder, set on load), so it is raised just above
-    // the HUD and under the tooltips (10.69). A theme reload restores the default, hence every frame.
-    if (Rml::ElementDocument* input = active ? FindDocument("chat_input.rml") : nullptr)
-    {
-        const Rml::Property* zIndex = input->GetLocalProperty(Rml::PropertyId::ZIndex);
-        if (zIndex == nullptr || zIndex->Get<float>() != InputOverHudDepth)
-            input->SetProperty(Rml::PropertyId::ZIndex, Rml::Property(InputOverHudDepth, Rml::Unit::NUMBER));
-    }
-
-    // 0.97's 0040e230: the buttons show while the mouse is over the bar's middle (x 160..480 from
-    // 4 units under its top) and hide once it leaves upwards past them (y < 416), wherever x is.
-    Rml::ElementDocument* hud = active ? FindDocument("main_frame.rml") : nullptr;
-    Rml::Element* bar = hud != nullptr ? hud->GetElementById("hud_layout") : nullptr;
-    const Rml::Vector2f size = bar != nullptr ? bar->GetBox().GetSize(Rml::BoxArea::Border) : Rml::Vector2f(0.f, 0.f);
-    if (size.x <= 0.f || size.y <= 0.f)
-    {
-        s_buttonsShown = false;
-        return;
-    }
-    // #hud_layout is the 640x48 bar; Project() undoes the workspace's scale on it.
-    Rml::Vector2f point(g_fWindowMouseX, g_fWindowMouseY);
-    if (!bar->Project(point))
-        return;
-    const Rml::Vector2f offset = bar->GetAbsoluteOffset(Rml::BoxArea::Border);
-    const float x = (point.x - offset.x) * OriginalWidth / size.x;
-    const float y = BarTop + (point.y - offset.y) * BarHeight / size.y;
-    if (x >= ButtonsHoverLeft && x < ButtonsHoverRight && y >= ButtonsHoverTop)
-        s_buttonsShown = true;
-    else if (y < ButtonsHideAbove)
-        s_buttonsShown = false;
+    SyncDocumentClass("chat_log.rml", SilencedClass, !IsChatShown());
+    SyncButtons();
 }
 
 bool ButtonsShown()

@@ -118,10 +118,16 @@ RML, templates, RCSS and theme-local images use the first matching whole file. A
 stylesheet replaces its ancestor's file; rules are not automatically combined. Paths to common
 assets outside the theme folder keep their ordinary meaning.
 
-`[Tokens]`, `[Capabilities]` and `[Fonts]` inherit individual keys. A child value wins, including
+`[Tokens]`, `[Capabilities]`, `[Fonts]` and `[Stacking]` inherit individual keys. A child value wins, including
 `NativeTextSize=0` or an empty font entry. Display names stay specific to the child. Names use
 letters, digits, `_` and `-` and are normalized to lowercase. Missing ancestors, invalid names
 and inheritance cycles make a theme unavailable for selection.
+
+`[Stacking]` moves one of the theme's documents in the stacking order, when its layout makes two
+documents overlap the other way round. `chat_input.rml=10.65` puts the chat input over the HUD
+(`main_frame.rml`, 10.6) and under the tooltips (10.69). The depths are the original windows'
+layer depths, listed in `UI/RmlBridge/RmlStackingOrder.cpp`; a document the theme does not list
+keeps its own.
 
 1. Create `src/bin/Data/Interface/RmlUi/themes/<your-theme-name>/`.
 2. Declare `Base=legacy` or `Base=modern` in `[Theme]`, or supply your own complete stylesheets.
@@ -342,8 +348,12 @@ What changes for the player, besides the look:
 
 - **Chat:** one list, either six frameless lines at the top-left corner or a framed window above
   the input box. F4 cycles frameless, 3, 6 and 15 lines; F2 hides normal chat while whispers,
-  party, guild and system messages stay. Three buttons (chat on/off, size, transparency) appear
-  above the bar while the pointer is over its middle.
+  party, guild and system messages stay (it is the same F2 as in the other themes, which keep
+  only whispers, so its state carries over a theme switch). Three buttons (chat on/off, size,
+  transparency) appear above the bar once the pointer is over its middle, and hide once it goes
+  above them.
+- **Character creation:** the class is chosen with arrows, which step through the classes the
+  client enables.
 - **World:** no marker where the hero is sent to walk, and no map title when entering a map.
 
 The behaviour above is C++ that a theme turns on in `theme.ini`'s `[Capabilities]`, so another
@@ -351,13 +361,17 @@ theme can reuse any of it:
 
 | Capability | Effect |
 |---|---|
-| `ClassicChat=1` | The 0.97 chat keys and buttons (the theme styles `.classic-chat-framed` / `.classic-chat-silenced`) |
+| `ClassicChat=1` | The 0.97 chat keys and buttons. The theme styles `body.classic-chat-framed` (workspace) and `body.classic-chat-silenced` (chat log), and places the buttons (`#chat_btns`) and the area that shows them (`#chat_btns_zone`) in `main_frame.rml` |
 | `NoMoveTargetMarker=1` | No marker under a move click |
 
 The HUD model also exposes what the 0.97 bar shows and the S6 bar does not: `party_open` /
 `guild_open` with `mainframe_party_click` / `mainframe_guild_click` and their tooltips,
 `coord_x` / `coord_y`, and `left_covered` / `right_covered` (a docked window covers that side
 of the world).
+
+The character creation model has `job_previous` / `job_next`: the enabled class before and after
+the selected one, or -1, for a theme that steps through the classes with arrows
+(`charmake_select_job(job_next)`) instead of a button per class.
 
 The pet / durability HUD (`item_endurance.rml`) marks `#pets` with `.in-party` while the hero is
 in a party, so a theme can keep the pet column clear of the party list. The classic theme also

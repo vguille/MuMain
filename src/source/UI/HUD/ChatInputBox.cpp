@@ -179,6 +179,21 @@ void mu::ui::window::CChatInputBox::SetBlockWhisper(bool bBlockWhisper)
     m_bBlockWhisper = bBlockWhisper;
 }
 
+void mu::ui::window::CChatInputBox::ToggleNormalChat()
+{
+    m_bShowMessageElseNormal = !m_bShowMessageElseNormal;
+    ApplyMessageFilter();
+    PlayBuffer(SOUND_CLICK01);
+}
+
+void mu::ui::window::CChatInputBox::ApplyMessageFilter()
+{
+    const MESSAGE_TYPE listed = UI::Chat::ClassicChat::ListedMessages(m_bShowMessageElseNormal,
+                                                                      UI::Chat::ClassicChat::IsActive());
+    if (m_pNewUIChatLogWnd != nullptr && m_pNewUIChatLogWnd->GetCurrentMsgType() != listed)
+        m_pNewUIChatLogWnd->ChangeMessage(listed);
+}
+
 bool mu::ui::window::CChatInputBox::UpdateMouseEvent()
 {
     if (g_pNewUISystem->IsVisible(mu::ui::window::INTERFACE_CHATINPUTBOX) == false)
@@ -196,22 +211,11 @@ bool mu::ui::window::CChatInputBox::UpdateMouseEvent()
 
 bool mu::ui::window::CChatInputBox::UpdateKeyEvent()
 {
-    if (UI::Chat::ClassicChat::UpdateKeys(m_pNewUIChatLogWnd)) return false; // 0.97 F2 / F4 in the classic theme
+    if (UI::Chat::ClassicChat::UpdateKeys(m_pNewUIChatLogWnd)) return false; // 0.97 F4 in the classic theme
 
     if (mu::ui::window::IsPress(VK_F2))
     {
-        m_bShowMessageElseNormal = !m_bShowMessageElseNormal;
-
-        if (m_bShowMessageElseNormal)
-        {
-            m_pNewUIChatLogWnd->ChangeMessage(mu::ui::window::TYPE_WHISPER_MESSAGE);
-        }
-        else
-        {
-            m_pNewUIChatLogWnd->ChangeMessage(mu::ui::window::TYPE_ALL_MESSAGE);
-        }
-
-        PlayBuffer(SOUND_CLICK01);
+        ToggleNormalChat();
         return false;
     }
 
@@ -553,6 +557,8 @@ void mu::ui::window::CChatInputBox::BindRmlModel(Rml::DataModelConstructor& c, C
 void mu::ui::window::CChatInputBox::OnRmlReloaded()
 {
     UI::Placement::Invalidate();
+    // F2's state stays across a theme switch; what it lists may not (ApplyMessageFilter()).
+    ApplyMessageFilter();
 }
 
 void mu::ui::window::CChatInputBox::BuildRmlUi()

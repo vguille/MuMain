@@ -71,7 +71,7 @@ body {
    box and standing on the bar (its fill down to y 432); the input box covers its foot while
    typing. The slot is the log's C++-measured size, without the 15-unit band under the lines
    (chat_log.rcss), hence 15 up. */
-.chat-stack.classic-chat-framed .slot[data-window="chat_log"] { top: auto; left: 50%; bottom: 15dp; margin-left: -134dp; }
+body.classic-chat-framed .chat-stack .slot[data-window="chat_log"] { top: auto; left: 50%; bottom: 15dp; margin-left: -134dp; }
 
 /* The event HUDs: the original's 640x480 frame standing on the HUD, in its units (one unit is
    --hud-scale px), its top 429 units above the HUD, each at the original's place in it. Classic:

@@ -203,4 +203,4 @@
 }
 
 /* 0.97's F2 (chat on/off): the normal chat hides; whispers, party, guild and system stay. */
-#panel.classic-chat-silenced .chat-line--chat { display: none; }
+body.classic-chat-silenced .chat-line--chat { display: none; }

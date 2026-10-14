@@ -100,8 +100,9 @@
 	</div>
 
 	<!-- The chat's three buttons just above the bar: normal chat on/off (F2), size (F4) and the
-	     framed window's transparency. They fade in while the mouse is over the bar's middle
-	     (UI/Chat/ClassicChat.cpp). -->
+	     framed window's transparency. They show once the pointer is over #chat_btns_zone and hide
+	     once it goes above them (UI/Chat/ClassicChat.cpp); the zone only marks the area. -->
+	<div id="chat_btns_zone" class="hud-part"></div>
 	<div id="chat_btns" class="hud-part" data-class-shown="chat_buttons_shown">
 		<div id="btn_chat_toggle" class="chat-btn" data-class-off="!chat_shown" data-event-click="mainframe_chat_toggle_click" data-attr-data-hint="chat_hint_0"></div>
 		<div id="btn_chat_size" class="chat-btn" data-event-click="mainframe_chat_size_click" data-attr-data-hint="chat_hint_1"></div>

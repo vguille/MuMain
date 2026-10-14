@@ -228,9 +228,11 @@
 #pet_skill_row { display: none; }
 
 /* The chat's buttons (0.97's 0040def0): nis_btnchat / nis_btnsize / nis_btnalpha, 16x16, 18 apart
-   from (295, 417), 15 units above the bar. They fade in under the mouse; the chat button is grey
-   and sunk by one unit while the normal chat is hidden, a button under the mouse is lit 10% and
-   a pressed one darkened and sunk. */
+   from (295, 417), 15 units above the bar. They fade in once the mouse is over the bar's middle
+   (#chat_btns_zone: x 160-480, from 4 units under the bar's top, 0040e230) and fade out once it
+   goes above them; the chat button is grey and sunk by one unit while the normal chat is hidden, a
+   button under the mouse is lit 10% and a pressed one darkened and sunk. */
+#chat_btns_zone { left: 160dp; top: 4dp; width: 320dp; height: 44dp; pointer-events: none; }
 @spritesheet classic-nis-chat-sheet  { src: ../../../Classic/Nis_btnchat.jpg;  classic-nis-chat: 0px 0px 16px 16px; }
 @spritesheet classic-nis-size-sheet  { src: ../../../Classic/Nis_btnsize.jpg;  classic-nis-size: 0px 0px 16px 16px; }
 @spritesheet classic-nis-alpha-sheet { src: ../../../Classic/Nis_btnalpha.jpg; classic-nis-alpha: 0px 0px 16px 16px; }

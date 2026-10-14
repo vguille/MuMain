@@ -96,6 +96,9 @@ namespace mu::ui::window
         void SetFieldText(const char* id, const type_string& text);
         void FocusField(const char* id);
 
+        // Lists in the chat log what F2's state and the active theme call for.
+        void ApplyMessageFilter();
+
         void BindRmlModel(Rml::DataModelConstructor& c, ChatInputRmlModel& model);
         void OnRmlReloaded();
         UI::RmlBridge::ThemedView<ChatInputRmlModel> m_RmlView{"chat_input",
@@ -131,6 +134,11 @@ namespace mu::ui::window
 
         bool IsBlockWhisper();
         void SetBlockWhisper(bool bBlockWhisper);
+
+        // F2: hides / shows the normal chat. What the log keeps meanwhile depends on the theme
+        // (UI::Chat::ClassicChat::ListedMessages()).
+        void ToggleNormalChat();
+        bool IsNormalChatShown() const { return !m_bShowMessageElseNormal; }
 
         bool UpdateMouseEvent();
         bool UpdateKeyEvent();
