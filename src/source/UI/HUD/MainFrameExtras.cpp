@@ -6,8 +6,6 @@
 #include "Engine/Object/ZzzCharacter.h"
 #include "I18N/All.h"
 #include "UI/Chat/ClassicChat.h"
-#include "Render/Textures/ZzzOpenglUtil.h"
-#include "UI/Placement/WindowPlacement.h"
 #include "UI/Core/WindowSystem.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
@@ -37,8 +35,6 @@ struct Model
     Rml::String coordY;
     bool partyOpen = false;
     bool guildOpen = false;
-    bool leftCovered = false;
-    bool rightCovered = false;
     WideText partyTooltip;
     WideText guildTooltip;
     bool chatButtons = false;
@@ -89,8 +85,6 @@ void BindModel(Rml::DataModelConstructor& constructor)
     constructor.Bind("coord_y", &s_model.coordY);
     constructor.Bind("party_open", &s_model.partyOpen);
     constructor.Bind("guild_open", &s_model.guildOpen);
-    constructor.Bind("left_covered", &s_model.leftCovered);
-    constructor.Bind("right_covered", &s_model.rightCovered);
     constructor.Bind("party_tooltip", &s_model.partyTooltip.text);
     constructor.Bind("guild_tooltip", &s_model.guildTooltip.text);
     constructor.BindEventCallback("mainframe_party_click",
@@ -126,11 +120,6 @@ void SyncModel()
     }
     SyncBool(s_model.partyOpen, "party_open", g_pNewUISystem->IsVisible(mu::ui::window::INTERFACE_PARTY));
     SyncBool(s_model.guildOpen, "guild_open", g_pNewUISystem->IsVisible(mu::ui::window::INTERFACE_GUILDINFO));
-    // A window docked on a side covers that side's dragon in 0.97 (the HUD document draws over the
-    // windows here, so the dragon hides instead).
-    SyncBool(s_model.leftCovered, "left_covered", UI::Placement::UncoveredWorldLeft() > 0.5f);
-    SyncBool(s_model.rightCovered, "right_covered",
-             UI::Placement::UncoveredWorldRight() < static_cast<float>(WindowWidth) - 0.5f);
     SyncWide(s_model.partyTooltip, "party_tooltip", I18N::Game::PartyP);
     SyncWide(s_model.guildTooltip, "guild_tooltip", I18N::Game::GuildG);
 

@@ -7,9 +7,8 @@ class DataModelConstructor;
 
 // What the classic (0.97) HUD shows and the S6 one does not, added to CMainFrameWindow's data model
 // ("main_frame"): the Party and Guild buttons on the bar (open state, click, hint), the hero's
-// coordinates in its left box, which side a docked window covers (the dragons at the bar's ends
-// hide under it) and the chat's three buttons above the bar (UI/Chat/ClassicChat). Only the classic
-// theme's main_frame.rml uses them; a theme that does not pays nothing.
+// coordinates in its left box and the chat's three buttons above the bar (UI/Chat/ClassicChat).
+// Only the classic theme's main_frame.rml uses them; a theme that does not pays nothing.
 namespace UI::Hud::MainFrameExtras
 {
 // Adds the bindings, while CMainFrameWindow builds its model.
